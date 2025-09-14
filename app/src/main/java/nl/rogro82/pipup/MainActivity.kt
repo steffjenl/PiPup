@@ -32,13 +32,22 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         //Ask permission to draw over other apps
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+        if (!Settings.canDrawOverlays(this)) {
             askPermission();
         }
         // start service in foreground
 
         val textViewConnection = findViewById<TextView>(R.id.textViewServerAddress)
         val textViewServerAddress = findViewById<TextView>(R.id.textViewServerAddress)
+        val textViewVersion = findViewById<TextView>(R.id.textViewVersion)
+
+        textViewVersion.apply {
+            visibility = View.VISIBLE
+            text = resources.getString(
+                R.string.version_number,
+                BuildConfig.VERSION_NAME
+            )
+        }
 
         when(val ipAddress = getIpAddress()) {
             is String -> {
@@ -74,8 +83,7 @@ class MainActivity : Activity() {
         startActivityForResult(intent, ACTION_MANAGE_OVERLAY_PERMISSION_REQUEST_CODE)
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.M)
-    override fun onActivityResult(requestCode: Int, resultCode: Int, @Nullable data: Intent?) {
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == ACTION_MANAGE_OVERLAY_PERMISSION_REQUEST_CODE) {
             if (!Settings.canDrawOverlays(this)) {

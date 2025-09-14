@@ -8,17 +8,17 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
+import android.os.PowerManager
 import android.util.Log
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
+import androidx.core.app.NotificationCompat
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoHTTPD.newFixedLengthResponse
 import java.io.File
-
+import com.google.gson.Gson
 
 class PiPupService : Service(), WebServer.Handler {
     private val mHandler: Handler = Handler()
@@ -179,7 +179,21 @@ class PiPupService : Service(), WebServer.Handler {
                             mHandler.post {
                                 removePopup(true)
                             }
-                            OK()
+                            OK(Gson().toJson(mapOf("status" to "ok")))
+                        }
+                        "/screenon" -> {
+                            mHandler.post {
+                                mOverlay?.apply {
+                                    // turn screen on
+                                    this.keepScreenOn = true
+
+                                    // clear after 1 minute
+                                    mHandler.postDelayed({
+                                        this.keepScreenOn = false
+                                    }, 60000)
+                                }
+                            }
+                            OK(Gson().toJson(mapOf("status" to "ok")))
                         }
                         "/notify" -> {
                             try {
@@ -231,6 +245,8 @@ class PiPupService : Service(), WebServer.Handler {
                                         val messageColor = params["messageColor"]
                                             ?: PopupProps.DEFAULT_TITLE_COLOR
 
+                                        val messageIcon = params["messageIcon"]
+
                                         val media = when(val image = files["image"]) {
                                             is String -> {
                                                 File(image).absoluteFile.let {
@@ -253,6 +269,7 @@ class PiPupService : Service(), WebServer.Handler {
                                             message = message,
                                             messageSize = messageSize,
                                             messageColor = messageColor,
+                                            messageIcon = messageIcon,
                                             media = media
                                         )
                                     }
@@ -265,8 +282,7 @@ class PiPupService : Service(), WebServer.Handler {
                                     createPopup(popup)
                                 }
 
-                                OK("$popup")
-
+                                OK(Gson().toJson(popup))
 
                             } catch (ex: Throwable) {
                                 Log.e(LOG_TAG, ex.message.toString())
@@ -288,7 +304,7 @@ class PiPupService : Service(), WebServer.Handler {
         const val MULTIPART_FORM_DATA = "multipart/form-data"
         const val APPLICATION_JSON = "application/json"
 
-        fun OK(message: String? = null): NanoHTTPD.Response = newFixedLengthResponse(NanoHTTPD.Response.Status.OK, "text/plain", message)
+        fun OK(message: String? = null): NanoHTTPD.Response = newFixedLengthResponse(NanoHTTPD.Response.Status.OK, "application/json", message)
         fun InvalidRequest(message: String? = null): NanoHTTPD.Response = newFixedLengthResponse(NanoHTTPD.Response.Status.BAD_REQUEST, "text/plain", "invalid request: $message")
     }
 }
